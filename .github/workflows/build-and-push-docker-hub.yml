@@ -30,7 +30,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: lehaison183/ci-cd:staging2
+          tags: learn-cicd/ci-cd:staging2
 
 
   pull-and-up:
