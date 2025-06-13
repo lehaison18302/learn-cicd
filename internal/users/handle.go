@@ -20,7 +20,7 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// GetUsersHandler handles GET /users with pagination
+// Get user
 func (h *Handler) GetUsersHandler(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	pageSizeStr := c.DefaultQuery("pageSize", "10")
@@ -41,7 +41,7 @@ func (h *Handler) GetUsersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-// CreateUserHandler handles POST /users to create a new user
+// Create user
 func (h *Handler) CreateUserHandle(c *gin.Context) {
 	var user User
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -64,7 +64,7 @@ func (h *Handler) CreateUserHandle(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
 }
 
-// UpdateUserHandler handles PUT /users/:id to update a user
+// Update user
 func (h *Handler) UpdateUserHandler(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -93,7 +93,7 @@ func (h *Handler) UpdateUserHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
 }
 
-// DeleteUserHandler handles DELETE /users/:id to delete a user
+// Delete user
 func (h *Handler) DeleteUserHandler(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)

@@ -33,7 +33,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// Bảo vệ các route cần xác thực
 	api := r.Group("/users", middleware.JWTAuthRequired())
-	api.POST("/create", handler.CreateUserHandle)
+	api.POST("/users/create", handler.CreateUserHandle)
 	api.PUT(":id", handler.UpdateUserHandler)
 	api.DELETE(":id", handler.DeleteUserHandler)
 
