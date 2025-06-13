@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"my_project/internal/actionlog"
+	"my_project/internal/redis"
 	"my_project/internal/server"
 )
 
@@ -38,6 +40,8 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 }
 
 func main() {
+	redis.InitRedis()       // Initialize Redis client
+	actionlog.StartWorker() // Khởi động worker ghi log từ Redis vào DB
 
 	server := server.NewServer()
 

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Management</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f0f0f0; }
+    input, button { margin: 4px; }
+    .actions { display: flex; gap: 4px; }
+  </style>
+</head>
+<body>
+  <h1>User Management</h1>
+  <form id="userForm">
+    <input type="hidden" id="userId">
+    <input type="text" id="username" placeholder="Username" required>
+    <input type="text" id="fullname" placeholder="Fullname" required>
+    <button type="submit">Create</button>
+    <button type="button" id="cancelEdit" style="display:none">Cancel</button>
+  </form>
+  <div>
+    <button onclick="prevPage()">Prev</button>
+    <span id="pageInfo"></span>
+    <button onclick="nextPage()">Next</button>
+  </div>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Username</th><th>Fullname</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="userTable"></tbody>
+  </table>
+  <div style="position:absolute;top:10px;right:20px;">
+    <form id="loginForm" style="display:inline-block;">
+      <input type="text" id="loginUsername" placeholder="Username" required style="width:100px;">
+      <input type="password" id="loginPassword" placeholder="Password" required style="width:100px;">
+      <button type="submit">Login</button>
+      <button type="button" id="logoutBtn" style="display:none">Logout</button>
+    </form>
+    <span id="loginStatus" style="margin-left:8px;color:green;"></span>
+  </div>
+  <script>
+    let page = 1, pageSize = 5, totalLoaded = 0;
+    const userForm = document.getElementById('userForm');
+    const userIdInput = document.getElementById('userId');
+    const usernameInput = document.getElementById('username');
+    const fullnameInput = document.getElementById('fullname');
+    const cancelEditBtn = document.getElementById('cancelEdit');
+    const pageInfo = document.getElementById('pageInfo');
+
+    function fetchUsers() {
+      fetch(`/users?page=${page}&pageSize=${pageSize}`)
+        .then(res => res.json())
+        .then(data => {
+          totalLoaded = data.length;
+          renderTable(data);
+          pageInfo.textContent = `Page ${page}`;
+        });
+    }
+
+    function renderTable(users) {
+      const tbody = document.getElementById('userTable');
+      tbody.innerHTML = '';
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${u.id}</td>
+          <td>${u.username}</td>
+          <td>${u.fullname}</td>
+          <td class="actions">
+            <button onclick="editUser(${u.id}, '${u.username}', '${u.fullname}')">Edit</button>
+            <button onclick="deleteUser(${u.id})">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    userForm.onsubmit = function(e) {
+      e.preventDefault();
+      const id = userIdInput.value;
+      const user = {
+        username: usernameInput.value,
+        fullname: fullnameInput.value
+      };
+      if (id) {
+        fetch(`/users/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(user)
+        }).then(() => {
+          userForm.reset();
+          userIdInput.value = '';
+          userForm.querySelector('button[type="submit"]').textContent = 'Create';
+          cancelEditBtn.style.display = 'none';
+          fetchUsers();
+        });
+      } else {
+        fetch('/users/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(user)
+        }).then(() => {
+          userForm.reset();
+          fetchUsers();
+        });
+      }
+    };
+
+    function editUser(id, username, fullname) {
+      userIdInput.value = id;
+      usernameInput.value = username;
+      fullnameInput.value = fullname;
+      userForm.querySelector('button[type="submit"]').textContent = 'Update';
+      cancelEditBtn.style.display = '';
+    }
+    cancelEditBtn.onclick = function() {
+      userForm.reset();
+      userIdInput.value = '';
+      userForm.querySelector('button[type="submit"]').textContent = 'Create';
+      cancelEditBtn.style.display = 'none';
+    };
+
+    function deleteUser(id) {
+      if (!confirm('Delete user?')) return;
+      fetch(`/users/${id}`, { method: 'DELETE' })
+        .then(() => fetchUsers());
+    }
+
+    function prevPage() {
+      if (page > 1) { page--; fetchUsers(); }
+    }
+    function nextPage() {
+      if (totalLoaded === pageSize) { page++; fetchUsers(); }
+    }
+
+    // --- JWT AUTH LOGIC ---
+    let jwtToken = '';
+    const loginForm = document.getElementById('loginForm');
+    const loginStatus = document.getElementById('loginStatus');
+    const logoutBtn = document.getElementById('logoutBtn');
+    loginForm.onsubmit = function(e) {
+      e.preventDefault();
+      const u = document.getElementById('loginUsername').value;
+      const p = document.getElementById('loginPassword').value;
+      fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.token) {
+          jwtToken = data.token;
+          console.log('JWT Token:', jwtToken);
+          loginStatus.textContent = 'Logged in as ' + u;
+          loginForm.querySelector('button[type="submit"]').style.display = 'none';
+          logoutBtn.style.display = '';
+          enableAuthUI(true);
+          fetchUsers();
+        } else {
+          throw new Error('Login failed');
+        }
+      })
+      .catch(() => {
+        loginStatus.textContent = 'Login failed';
+        setTimeout(()=>loginStatus.textContent='', 2000);
+      });
+    };
+    logoutBtn.onclick = function() {
+      jwtToken = '';
+      loginStatus.textContent = '';
+      loginForm.querySelector('button[type="submit"]').style.display = '';
+      logoutBtn.style.display = 'none';
+      enableAuthUI(false);
+    };
+    function enableAuthUI(isAuth) {
+      userForm.querySelector('button[type="submit"]').disabled = !isAuth;
+      document.querySelectorAll('.actions button').forEach(btn=>btn.disabled=!isAuth);
+    }
+    // --- PATCH fetch to add JWT header ---
+    const origFetch = window.fetch;
+    window.fetch = function(url, opts={}) {
+      opts.headers = opts.headers||{};
+      if(jwtToken && (url.includes('/users/create')||url.match(/\/users\/[0-9]+/))) {
+        opts.headers['Authorization'] = 'Bearer ' + jwtToken;
+      }
+      return origFetch(url, opts);
+    }
+    // Disable form actions if not logged in
+    enableAuthUI(false);
+
+    fetchUsers();
+    window.editUser = editUser;
+    window.deleteUser = deleteUser;
+    window.prevPage = prevPage;
+    window.nextPage = nextPage;
+  </script>
+</body>
+</html>

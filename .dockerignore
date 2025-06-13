@@ -1,0 +1,13 @@
+# Ignore files not needed in docker image
+.git
+.gitignore
+*.md
+*.docx
+*.log
+*.out
+*.exe
+*.test
+.vscode
+.idea
+node_modules
+web/users.html~
